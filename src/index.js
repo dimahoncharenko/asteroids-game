@@ -1,41 +1,51 @@
 "use strict";
-const CANVAS_WIDTH = 900;
-const CANVAS_HEIGHT = 700;
-const FPS = 30;
-const FRICTION = 0.4;
-const SHIP_SIZE = 30;
+const CANVAS_WIDTH = 900; // Width of canvas element
+const CANVAS_HEIGHT = 700; // Height of canvas element
+const FPS = 30; // Frames per second
+const FRICTION = 0.4; // coefficient of friction (0 === no friction; 1 === a lot of friction)
+const SHIP_SIZE = 30; // Ship's size
 const SHIP_ROT_SPD = 360; // Degrees per socond
-const SHIP_THRUST = 5;
+const SHIP_THRUST = 5; // Thrusting the ship in pixels per frame
 const SHIP_EXP_DUR = 1; // Ship's duration of explosion in seconds
 const SHIP_INV_DUR = 10; // Duration of ship's invisibility
 const SHIP_BLINK_TIME = 0.3; // Time of every ship's blink
-const SHIP_LIVES_NUM = 3;
-const ASTEROID_SIZE = 100;
-const ASTEROID_SPD = 50;
+const SHIP_LIVES_NUM = 3; // Max count of lives
+const ASTEROID_SIZE = 100; // Asteroids' size
+const ASTEROID_SPD = 50; // Average speed of asteroids in pixels per second
 const ASTEROID_JAG = 0.4; // Asteroids' jaggedness (0 - without juggedness, 1 - a lot of juggedness)
-const ASTEROID_NUM = 3;
-const ASTEROID_VERT = 12;
-const LASER_NUM = 10;
-const LASER_SPD = 400;
+const ASTEROID_NUM = 3; // Initial count of asteroids
+const ASTEROID_VERT = 12; // Number of asteroids' vertices
+const LASER_NUM = 10; // Max number of drawed lasers in the scene
+const LASER_SPD = 400; // Lasers' speed in pixels per second
 const HIGHEST_SCORE = 100; // Score for the smallest asteroids
 const MEDIUM_SCORE = 50; // Score for the medium-sized asteroids
 const SMALL_SCORE = 20; // Score for the largest asteroids
-const SHOW_CENTER_DOT = false;
-const SHOW_COLLISION_MASK = false;
-const HIGH_SCORE_KEY = "HIGH SCORE";
+const SHOW_CENTER_DOT = false; // For testing purposes, activate centre dot to the ship to check the ship's direction
+const SHOW_COLLISION_MASK = false; // For testing purposes, activate collision mask for the ship and asteroids
+const HIGH_SCORE_KEY = "HIGH SCORE"; // Key for localstorage
+const SOUND_ON = true; // Turn on or turn off sounds effects
+const MUSIC_ON = true; // Turn on or turn off the music
 class Sound {
-    constructor(src, volume = 0.5, maxStreams = 1) {
+    constructor(src, volume = 0.5, maxStreams = 1 // Max count of the array of audio elements
+    ) {
         this.maxStreams = maxStreams;
+        // Array of audio elements
         this.streams = [];
+        // Current index of the array of audio elements
         this.currentStream = 0;
+        // Fill the array and configure the volume
         for (let i = 0; i < this.maxStreams; i++) {
             this.streams.push(new Audio(src));
             this.streams[i].volume = volume;
         }
     }
     play() {
-        this.currentStream = (this.currentStream + 1) % this.maxStreams;
-        this.streams[this.currentStream].play();
+        if (SOUND_ON) {
+            // After every call of the function change current index of stream.
+            // First the index will be incremented once the value will equal the last index of the streams it's value will start with from 0
+            this.currentStream = (this.currentStream + 1) % this.maxStreams;
+            this.streams[this.currentStream].play();
+        }
     }
     pause() {
         this.streams[this.currentStream].pause();
@@ -48,19 +58,23 @@ window.addEventListener("DOMContentLoaded", () => {
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
         const ctx = canvas.getContext("2d");
+        // Set up the main game status props
         let ship;
         let asteroids = [];
         let lives;
         let score;
         let highScore;
         let level;
+        // Message which appears when new level is started
         let message;
+        // Opacity of a text
         let textAlpha;
         // set up sound effects
         let fxLaser = new Sound("sounds/laser.m4a", 0.5, 6);
         let fxExplosion = new Sound("sounds/explode.m4a");
         let fxThrust = new Sound("sounds/thrust.m4a");
         let fxHit = new Sound("sounds/hit.m4a", 0.5, 6);
+        // Reset the game status and start a level
         newGame();
         function newGame() {
             level = 1;
@@ -102,8 +116,11 @@ window.addEventListener("DOMContentLoaded", () => {
             ctx.strokeStyle = color;
             ctx.lineWidth = SHIP_SIZE / 20;
             ctx.beginPath();
+            // nose of the ship
             ctx.moveTo(x + (4 / 3) * ship.r * Math.cos(dir), y - (4 / 3) * ship.r * Math.sin(dir));
+            // left side of the ship
             ctx.lineTo(x - ship.r * ((2 / 3) * Math.cos(dir) - Math.sin(dir)), y + ship.r * ((2 / 3) * Math.sin(dir) + Math.cos(dir)));
+            // right side of the ship
             ctx.lineTo(x - ship.r * ((2 / 3) * Math.cos(dir) + Math.sin(dir)), y + ship.r * ((2 / 3) * Math.sin(dir) - Math.cos(dir)));
             ctx.closePath();
             ctx.stroke();
@@ -131,6 +148,7 @@ window.addEventListener("DOMContentLoaded", () => {
             for (let i = 0; i < ASTEROID_NUM + level; i++) {
                 x = Math.random() * CANVAS_WIDTH;
                 y = Math.random() * CANVAS_HEIGHT;
+                // When the asteroids' coords very near the ship's coords, choose another coords
                 while (distanceBetweenPoints(ship.x, ship.y, x, y) <
                     ship.r + ASTEROID_SIZE * 2) {
                     x = Math.random() * CANVAS_WIDTH;
@@ -139,6 +157,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 asteroids.push(newAsteroid(x, y));
             }
         }
+        // The function determines distance between two points
         function distanceBetweenPoints(x1, y1, x2, y2) {
             return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
         }
@@ -159,8 +178,11 @@ window.addEventListener("DOMContentLoaded", () => {
                 vert: Math.random() * ASTEROID_VERT + ASTEROID_VERT / 2,
                 offsets: [],
             };
+            // Fill the array of coefficients of juggedness
             for (let i = 0; i < asteroid.vert; i++) {
-                asteroid.offsets.push(Math.random() * ASTEROID_JAG * 2 + 1 - ASTEROID_JAG);
+                asteroid.offsets.push(
+                // For correct appearing the number should be in range of 0 and 2
+                Math.random() * ASTEROID_JAG * 2 + 1 - ASTEROID_JAG);
             }
             return asteroid;
         }
@@ -187,6 +209,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 }
                 ctx.closePath();
                 ctx.stroke();
+                // Draw the collision mask
                 if (SHOW_COLLISION_MASK) {
                     ctx.strokeStyle = "lime";
                     ctx.lineWidth = SHIP_SIZE / 20;
@@ -199,24 +222,33 @@ window.addEventListener("DOMContentLoaded", () => {
         function destroyAsteroid(index) {
             let target = asteroids[index];
             fxHit.play();
+            // If targeted asteroid is huge then create 2 medium-sized asteroids
             if (target.r === Math.ceil(ASTEROID_SIZE / 2)) {
                 asteroids.push(newAsteroid(target.x, target.y, Math.ceil(ASTEROID_SIZE / 4)));
                 asteroids.push(newAsteroid(target.x, target.y, Math.ceil(ASTEROID_SIZE / 4)));
+                // Add a small amount of score because the asteroid is huge
                 score += SMALL_SCORE;
             }
+            // If targeted asteroid is medium-sized then create 2 small asteroids
             else if (target.r === Math.ceil(ASTEROID_SIZE / 4)) {
                 asteroids.push(newAsteroid(target.x, target.y, Math.ceil(ASTEROID_SIZE / 8)));
                 asteroids.push(newAsteroid(target.x, target.y, Math.ceil(ASTEROID_SIZE / 8)));
+                // Add a medium amount of score because the asteroid is medium-sized
                 score += MEDIUM_SCORE;
             }
+            // If targeted asteroid is small then add the largest amount of score
             else {
                 score += HIGHEST_SCORE;
             }
+            // If current score in higher than high score then assign the new value to high score
             if (score > highScore) {
                 highScore = score;
+                // Save into the API BOM localstorage
                 localStorage.setItem(HIGH_SCORE_KEY, `${highScore}`);
             }
+            // Remove the targeted asteroid
             asteroids.splice(index, 1);
+            // If the player destroyed all the asteroids then start a new level
             if (asteroids.length === 0) {
                 level++;
                 newLevel();
@@ -234,6 +266,7 @@ window.addEventListener("DOMContentLoaded", () => {
             });
             ship.canShoot = false;
         }
+        // Handle keyboard listeners
         document.addEventListener("keydown", ({ key }) => {
             if (ship.isDead)
                 return;
@@ -270,11 +303,16 @@ window.addEventListener("DOMContentLoaded", () => {
                     break;
             }
         });
+        // The main function which are calling in the game loop
         function draw() {
+            // When the number is even then show the ship, thruster
             const isShowed = ship.blinkNum % 2 === 0;
+            // When the var is largest than 0 it means the ship is exploding
             const isExploded = ship.explodeTime > 0;
+            // draw the scene
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            // Handle the ship's blinks
             if (ship.blinkNum > 0) {
                 ship.blinkTime--;
                 if (ship.blinkTime === 0) {
@@ -282,6 +320,7 @@ window.addEventListener("DOMContentLoaded", () => {
                     ship.blinkNum--;
                 }
             }
+            // Draw the thruster
             if (ship.isThrusting && !ship.isDead) {
                 if (!isExploded) {
                     fxThrust.play();
@@ -306,6 +345,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 ship.thrust.x -= (FRICTION * ship.thrust.x) / FPS;
                 ship.thrust.y -= (FRICTION * ship.thrust.y) / FPS;
             }
+            // Draw the ship or the ship's explosion
             if (!isExploded) {
                 if (isShowed && !ship.isDead) {
                     drawShip(ship.x, ship.y, ship.dir);
@@ -330,10 +370,12 @@ window.addEventListener("DOMContentLoaded", () => {
                 ctx.fill();
             }
             if (!isExploded) {
+                // Draw the center dot
                 if (SHOW_CENTER_DOT) {
                     ctx.fillStyle = "red";
                     ctx.fillRect(ship.x - 1, ship.y - 1, 2, 2);
                 }
+                // Draw the collision mask
                 if (SHOW_COLLISION_MASK) {
                     ctx.strokeStyle = "lime";
                     ctx.lineWidth = SHIP_SIZE / 20;
@@ -443,6 +485,7 @@ window.addEventListener("DOMContentLoaded", () => {
             ctx.textAlign = "center";
             ctx.fillText(`TOP ${highScore}`, CANVAS_WIDTH / 2, SHIP_SIZE + ship.r);
         }
+        // Set up the game loop which will called 30 times per second
         setInterval(() => {
             draw();
         }, 1000 / FPS);
