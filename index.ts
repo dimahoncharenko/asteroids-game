@@ -70,6 +70,47 @@ type Laser = {
   yv: number; // Y - velocity (Acceleration of lasers)
 };
 
+class Music {
+  private lowSound: HTMLAudioElement;
+  private highSound: HTMLAudioElement;
+  private tempo = 1.0;
+  private isLow = true;
+  private beatTime = 0; // How much is left to the next beat
+
+  constructor(src1: string, src2: string, volume = 0.5) {
+    this.lowSound = new Audio(src1);
+    this.highSound = new Audio(src2);
+
+    this.lowSound.volume = volume;
+    this.highSound.volume = volume;
+  }
+
+  play() {
+    if (MUSIC_ON) {
+      if (this.isLow) {
+        this.lowSound.play();
+      } else {
+        this.highSound.play();
+      }
+
+      this.isLow = !this.isLow;
+    }
+  }
+
+  setTempo(ratio: number) {
+    this.tempo = 1.0 - 0.75 * (1.0 - ratio);
+  }
+
+  tick() {
+    if (this.beatTime === 0) {
+      this.play();
+      this.beatTime = Math.ceil(this.tempo * FPS);
+    } else {
+      this.beatTime--;
+    }
+  }
+}
+
 class Sound {
   // Array of audio elements
   private streams: HTMLAudioElement[] = [];
@@ -129,6 +170,13 @@ window.addEventListener("DOMContentLoaded", () => {
     let fxExplosion = new Sound("sounds/explode.m4a");
     let fxThrust = new Sound("sounds/thrust.m4a");
     let fxHit = new Sound("sounds/hit.m4a", 0.5, 6);
+
+    // set up the music background
+    let musicBg = new Music("sounds/music-low.m4a", "sounds/music-high.m4a");
+
+    // These props need to calculate ratio of asteroids and determine tempo of the music
+    let totalAsteroids: number;
+    let remainedAsteroids: number;
 
     // Reset the game status and start a level
     newGame();
@@ -215,6 +263,11 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     function createAsteroidBelt() {
+      asteroids = [];
+
+      totalAsteroids = (ASTEROID_NUM + level) * 7;
+      remainedAsteroids = totalAsteroids;
+
       let x: number;
       let y: number;
       for (let i = 0; i < ASTEROID_NUM + level; i++) {
@@ -379,6 +432,13 @@ window.addEventListener("DOMContentLoaded", () => {
       // Remove the targeted asteroid
       asteroids.splice(index, 1);
 
+      remainedAsteroids--;
+
+      // Calculate a new ratio of music
+      musicBg.setTempo(
+        remainedAsteroids === 0 ? 1 : remainedAsteroids / totalAsteroids
+      );
+
       // If the player destroyed all the asteroids then start a new level
       if (asteroids.length === 0) {
         level++;
@@ -445,6 +505,9 @@ window.addEventListener("DOMContentLoaded", () => {
       const isShowed = ship.blinkNum % 2 === 0;
       // When the var is largest than 0 it means the ship is exploding
       const isExploded = ship.explodeTime > 0;
+
+      // play the music
+      musicBg.tick();
 
       // draw the scene
       ctx.fillStyle = "black";
@@ -652,7 +715,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       // draw lives
       for (let i = 1; i <= lives; i++) {
-        drawShip(SHIP_SIZE * i, SHIP_SIZE, (90 / 180) * Math.PI);
+        drawShip(SHIP_SIZE * (i * 1.2), SHIP_SIZE, (90 / 180) * Math.PI);
       }
 
       // draw the score
