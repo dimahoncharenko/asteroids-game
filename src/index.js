@@ -209,6 +209,7 @@ window.addEventListener("DOMContentLoaded", () => {
                 y,
                 dir: Math.random() * (Math.PI * 2),
                 r,
+                rot: (Math.random() - 0.5) / FPS,
                 xv: Math.random() *
                     ASTEROID_SPD *
                     level *
@@ -465,6 +466,7 @@ window.addEventListener("DOMContentLoaded", () => {
             for (let i = 0; i < asteroids.length; i++) {
                 asteroids[i].x += asteroids[i].xv / FPS;
                 asteroids[i].y += asteroids[i].yv / FPS;
+                asteroids[i].dir += asteroids[i].rot;
                 if (asteroids[i].x < -asteroids[i].r) {
                     asteroids[i].x = CANVAS_WIDTH + asteroids[i].r;
                 }
